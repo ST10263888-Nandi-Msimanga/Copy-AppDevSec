@@ -1,0 +1,283 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  schedule:
+    # Run security scan every day at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        portal: [employee-portal, payments-portal]
+        component: [backend, frontend]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: '${{ matrix.portal }}/${{ matrix.component }}/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: ./${{ matrix.portal }}/${{ matrix.component }}
+        run: npm ci
+
+      - name: Run npm audit
+        working-directory: ./${{ matrix.portal }}/${{ matrix.component }}
+        run: |
+          npm audit --audit-level=moderate --json > npm-audit-${{ matrix.portal }}-${{ matrix.component }}.json || true
+          npm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: Upload npm audit results
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-audit-${{ matrix.portal }}-${{ matrix.component }}
+          path: ./${{ matrix.portal }}/${{ matrix.component }}/npm-audit-*.json
+          retention-days: 30
+
+  snyk-scan:
+    name: Snyk Security Scan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        portal: [employee-portal, payments-portal]
+        component: [backend, frontend]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        working-directory: ./${{ matrix.portal }}/${{ matrix.component }}
+        run: npm ci
+
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --file=${{ matrix.portal }}/${{ matrix.component }}/package.json
+          command: test
+
+      - name: Upload Snyk results to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: snyk.sarif
+
+  codeql-analysis:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'javascript' ]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{matrix.language}}"
+
+  secret-scan:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --debug --only-verified
+
+  eslint-scan:
+    name: ESLint Security Scan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        portal: [employee-portal, payments-portal]
+        component: [frontend]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        working-directory: ./${{ matrix.portal }}/${{ matrix.component }}
+        run: npm ci
+
+      - name: Run ESLint security rules
+        working-directory: ./${{ matrix.portal }}/${{ matrix.component }}
+        run: |
+          npx eslint . --ext .js,.jsx --format json --output-file eslint-results.json || true
+          npx eslint . --ext .js,.jsx
+        continue-on-error: true
+
+      - name: Upload ESLint results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eslint-${{ matrix.portal }}-${{ matrix.component }}
+          path: ./${{ matrix.portal }}/${{ matrix.component }}/eslint-results.json
+          retention-days: 30
+
+  sonarqube-scan:
+    name: SonarQube Analysis
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies for all portals
+        run: |
+          cd employee-portal/backend && npm ci && cd ../..
+          cd employee-portal/frontend && npm ci && cd ../..
+          cd payments-portal/backend && npm ci && cd ../..
+          cd payments-portal/frontend && npm ci && cd ../..
+
+      - name: Run tests with coverage
+        run: |
+          cd employee-portal/backend && npm run coverage || true && cd ../..
+          cd payments-portal/backend && npm run coverage || true && cd ../..
+        continue-on-error: true
+
+      - name: SonarQube Scan - Employee Portal
+        uses: sonarsource/sonarqube-scan-action@master
+        if: env.SONAR_TOKEN != ''
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          projectBaseDir: ./employee-portal
+          args: >
+            -Dsonar.projectKey=employee-portal
+            -Dsonar.sources=.
+            -Dsonar.exclusions=**/node_modules/**,**/tests/**
+        continue-on-error: true
+
+      - name: SonarQube Scan - Payments Portal
+        uses: sonarsource/sonarqube-scan-action@master
+        if: env.SONAR_TOKEN != ''
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          projectBaseDir: ./payments-portal
+          args: >
+            -Dsonar.projectKey=payments-portal
+            -Dsonar.sources=.
+            -Dsonar.exclusions=**/node_modules/**,**/tests/**
+        continue-on-error: true
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+          deny-licenses: GPL-2.0, GPL-3.0
+
+  osv-scanner:
+    name: OSV Vulnerability Scanner
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run OSV Scanner
+        uses: google/osv-scanner-action@v1
+        with:
+          scan-args: |-
+            --recursive
+            --skip-git
+            ./
+        continue-on-error: true
+
+  security-summary:
+    name: Security Scan Summary
+    runs-on: ubuntu-latest
+    needs: [dependency-scan, codeql-analysis, secret-scan, eslint-scan]
+    if: always()
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+
+      - name: Generate Security Summary
+        run: |
+          echo "# Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Scan Status" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Dependency Scan: ${{ needs.dependency-scan.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ CodeQL Analysis: ${{ needs.codeql-analysis.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Secret Scanning: ${{ needs.secret-scan.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ ESLint Security: ${{ needs.eslint-scan.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 Review detailed results in the Actions artifacts and Security tab" >> $GITHUB_STEP_SUMMARY
+
