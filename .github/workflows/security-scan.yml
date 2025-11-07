@@ -32,7 +32,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./${{ matrix.portal }}/${{ matrix.component }}
-        run: npm ci
+        run: npm ci || npm install
 
       - name: Run npm audit
         working-directory: ./${{ matrix.portal }}/${{ matrix.component }}
@@ -67,7 +67,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./${{ matrix.portal }}/${{ matrix.component }}
-        run: npm ci
+        run: npm ci || npm install
 
       - name: Run Snyk to check for vulnerabilities
         uses: snyk/actions/node@master
@@ -116,13 +116,13 @@ jobs:
       - name: Install dependencies for all components
         run: |
           echo "Installing dependencies for employee-portal/backend..."
-          cd employee-portal/backend && npm ci && cd ../..
+          cd employee-portal/backend && (npm ci || npm install) && cd ../..
           echo "Installing dependencies for employee-portal/frontend..."
-          cd employee-portal/frontend && npm ci && cd ../..
+          cd employee-portal/frontend && (npm ci || npm install) && cd ../..
           echo "Installing dependencies for payments-portal/backend..."
-          cd payments-portal/backend && npm ci && cd ../..
+          cd payments-portal/backend && (npm ci || npm install) && cd ../..
           echo "Installing dependencies for payments-portal/frontend..."
-          cd payments-portal/frontend && npm ci && cd ../..
+          cd payments-portal/frontend && (npm ci || npm install) && cd ../..
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
@@ -166,7 +166,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./${{ matrix.portal }}/${{ matrix.component }}
-        run: npm ci
+        run: npm ci || npm install
 
       - name: Run ESLint security rules
         working-directory: ./${{ matrix.portal }}/${{ matrix.component }}
@@ -201,10 +201,10 @@ jobs:
 
       - name: Install dependencies for all portals
         run: |
-          cd employee-portal/backend && npm ci && cd ../..
-          cd employee-portal/frontend && npm ci && cd ../..
-          cd payments-portal/backend && npm ci && cd ../..
-          cd payments-portal/frontend && npm ci && cd ../..
+          cd employee-portal/backend && (npm ci || npm install) && cd ../..
+          cd employee-portal/frontend && (npm ci || npm install) && cd ../..
+          cd payments-portal/backend && (npm ci || npm install) && cd ../..
+          cd payments-portal/frontend && (npm ci || npm install) && cd ../..
 
       - name: Run tests with coverage
         run: |
@@ -214,7 +214,6 @@ jobs:
 
       - name: SonarQube Scan - Employee Portal
         uses: sonarsource/sonarqube-scan-action@master
-        if: env.SONAR_TOKEN != ''
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
@@ -228,7 +227,6 @@ jobs:
 
       - name: SonarQube Scan - Payments Portal
         uses: sonarsource/sonarqube-scan-action@master
-        if: env.SONAR_TOKEN != ''
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
