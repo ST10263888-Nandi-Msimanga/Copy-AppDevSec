@@ -170,7 +170,13 @@ export const sanitizeRejectionReason = (reason) => {
   if (typeof reason !== 'string') return '';
   
   // Remove HTML tags and trim
-  let sanitized = reason.replace(/<[^>]*>/g, '').trim();
+  let sanitized = reason;
+  let previous;
+  do {
+    previous = sanitized;
+    sanitized = sanitized.replace(/<[^>]*>/g, '');
+  } while (sanitized !== previous);
+  sanitized = sanitized.trim();
   
   // Limit to 500 characters
   sanitized = sanitized.substring(0, 500);
