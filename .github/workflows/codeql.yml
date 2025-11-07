@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      security-events: write        # Required to upload results to Code Scanning
+      security-events: write
       contents: read
       actions: read
       packages: read
@@ -23,7 +23,7 @@ jobs:
       fail-fast: false
       matrix:
         language: [ "javascript-typescript" ]
-        build-mode: [ "manual" ]  # We will build the Node project before analyzing
+        build-mode: [ "manual" ]
 
     steps:
     - name: Checkout repository
@@ -35,12 +35,14 @@ jobs:
       with:
         node-version: 18
 
+    # Install dependencies FROM THE BACKEND DIRECTORY
     - name: Install Dependencies
+      working-directory: ./backend
       run: npm install
 
-    # If your project needs to compile TypeScript or Next.js etc, keep this.
-    # If not using TS, you can remove this step.
+    # If TS / Next.js / Build tools are used
     - name: Build Project
+      working-directory: ./backend
       run: npm run build --if-present
 
     # Initialize CodeQL with extra security rules
@@ -51,6 +53,7 @@ jobs:
         build-mode: ${{ matrix.build-mode }}
         queries: +security-extended,security-and-quality
 
+    # Run analysis
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v4
       with:
