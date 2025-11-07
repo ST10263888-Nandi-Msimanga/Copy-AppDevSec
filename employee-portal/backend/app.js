@@ -107,6 +107,8 @@ app.get("/api/auth/csrf-token", csrfProtection, (req, res) => {
 
 // Routes
 log.info("Registering API routes...");
+// Apply CSRF protection to API routes except for the token endpoint and /health
+app.use(csrfProtection);
 app.use("/api/auth", authRoutes);
 app.use("/api/transactions", transactionRoutes);
 log.info("Routes registered: /api/auth, /api/transactions");
