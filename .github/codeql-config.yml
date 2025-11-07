@@ -1,0 +1,51 @@
+name: "CodeQL Security Configuration"
+
+# Disable default setup to use custom configuration
+disable-default-queries: false
+
+# Query filters and suites
+queries:
+  - uses: security-extended
+  - uses: security-and-quality
+
+# Paths to analyze
+paths:
+  - employee-portal/backend
+  - employee-portal/frontend/src
+  - payments-portal/backend
+  - payments-portal/frontend/src
+
+# Paths to ignore
+paths-ignore:
+  - '**/node_modules/**'
+  - '**/tests/**'
+  - '**/test/**'
+  - '**/*.test.js'
+  - '**/*.spec.js'
+  - '**/coverage/**'
+  - '**/build/**'
+  - '**/dist/**'
+  - '**/public/**'
+  - '**/*.min.js'
+  - '**/vendor/**'
+  - '**/logs/**'
+
+# Query filters - focus on security issues
+query-filters:
+  # Include all security queries
+  - include:
+      kind: problem
+      precision: high
+  - include:
+      kind: problem
+      precision: very-high
+  - include:
+      tags contain: security
+  
+  # Exclude low-confidence findings initially
+  - exclude:
+      precision: low
+
+# External repositories (for libraries)
+external-repository-token: ${{ secrets.GITHUB_TOKEN }}
+

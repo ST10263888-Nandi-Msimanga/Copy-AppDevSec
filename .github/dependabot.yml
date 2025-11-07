@@ -1,0 +1,115 @@
+version: 2
+updates:
+  # Employee Portal Backend
+  - package-ecosystem: "npm"
+    directory: "/employee-portal/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "nandimsimanga"
+    labels:
+      - "dependencies"
+      - "employee-portal"
+      - "backend"
+    versioning-strategy: increase
+    groups:
+      security-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "security"
+    ignore:
+      # Ignore major version updates for production stability
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # Employee Portal Frontend
+  - package-ecosystem: "npm"
+    directory: "/employee-portal/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "nandimsimanga"
+    labels:
+      - "dependencies"
+      - "employee-portal"
+      - "frontend"
+    versioning-strategy: increase
+    groups:
+      security-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "security"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # Payments Portal Backend
+  - package-ecosystem: "npm"
+    directory: "/payments-portal/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "nandimsimanga"
+    labels:
+      - "dependencies"
+      - "payments-portal"
+      - "backend"
+    versioning-strategy: increase
+    groups:
+      security-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "security"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # Payments Portal Frontend
+  - package-ecosystem: "npm"
+    directory: "/payments-portal/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "nandimsimanga"
+    labels:
+      - "dependencies"
+      - "payments-portal"
+      - "frontend"
+    versioning-strategy: increase
+    groups:
+      security-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "security"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+

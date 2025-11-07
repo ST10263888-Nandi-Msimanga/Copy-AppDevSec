@@ -105,10 +105,24 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
+          config-file: ./.github/codeql-config.yml
           queries: security-extended,security-and-quality
 
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies for all components
+        run: |
+          echo "Installing dependencies for employee-portal/backend..."
+          cd employee-portal/backend && npm ci && cd ../..
+          echo "Installing dependencies for employee-portal/frontend..."
+          cd employee-portal/frontend && npm ci && cd ../..
+          echo "Installing dependencies for payments-portal/backend..."
+          cd payments-portal/backend && npm ci && cd ../..
+          echo "Installing dependencies for payments-portal/frontend..."
+          cd payments-portal/frontend && npm ci && cd ../..
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
