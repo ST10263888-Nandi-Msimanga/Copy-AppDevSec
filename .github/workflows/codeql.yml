@@ -1,0 +1,57 @@
+name: "CodeQL - Node Security Scan"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: '39 18 * * 2' # Weekly Scheduled Scan
+
+jobs:
+  analyze:
+    name: Analyze JavaScript/TypeScript
+    runs-on: ubuntu-latest
+
+    permissions:
+      security-events: write        # Required to upload results to Code Scanning
+      contents: read
+      actions: read
+      packages: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ "javascript-typescript" ]
+        build-mode: [ "manual" ]  # We will build the Node project before analyzing
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # Setup Node runtime
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+
+    - name: Install Dependencies
+      run: npm install
+
+    # If your project needs to compile TypeScript or Next.js etc, keep this.
+    # If not using TS, you can remove this step.
+    - name: Build Project
+      run: npm run build --if-present
+
+    # Initialize CodeQL with extra security rules
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v4
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
+        queries: +security-extended,security-and-quality
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v4
+      with:
+        category: "/language:${{ matrix.language }}"
