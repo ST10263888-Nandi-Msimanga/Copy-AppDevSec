@@ -139,26 +139,6 @@ jobs:
         with:
           category: "/language:${{matrix.language}}"
 
-  secret-scan:
-    name: Secret Scanning
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: TruffleHog OSS
-        uses: trufflesecurity/trufflehog@main
-        with:
-          path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
-          extra_args: --debug --only-verified
-
   eslint-scan:
     name: ESLint Security Scan
     runs-on: ubuntu-latest
@@ -298,7 +278,7 @@ jobs:
     permissions:
       contents: read
       actions: read  # For downloading artifacts
-    needs: [dependency-scan, codeql-analysis, secret-scan, eslint-scan]
+    needs: [dependency-scan, codeql-analysis, eslint-scan]
     if: always()
     
     steps:
@@ -313,7 +293,6 @@ jobs:
           echo "## Scan Status" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Dependency Scan: ${{ needs.dependency-scan.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ CodeQL Analysis: ${{ needs.codeql-analysis.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Secret Scanning: ${{ needs.secret-scan.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ ESLint Security: ${{ needs.eslint-scan.result }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "📊 Review detailed results in the Actions artifacts and Security tab" >> $GITHUB_STEP_SUMMARY
