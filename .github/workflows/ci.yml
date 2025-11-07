@@ -1,0 +1,108 @@
+name: CI - Build and Test
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+# Explicit minimal permissions
+permissions:
+  contents: read
+
+jobs:
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    
+    # Job-level permissions
+    permissions:
+      contents: read
+    
+    strategy:
+      matrix:
+        app: [employee-portal, payments-portal]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: ${{ matrix.app }}/backend/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: ./${{ matrix.app }}/backend
+      run: npm ci
+    
+    - name: Run tests
+      working-directory: ./${{ matrix.app }}/backend
+      run: npm test
+      env:
+        NODE_ENV: test
+
+  test-frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    
+    # Job-level permissions
+    permissions:
+      contents: read
+    
+    strategy:
+      matrix:
+        app: [employee-portal, payments-portal]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: ${{ matrix.app }}/frontend/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: ./${{ matrix.app }}/frontend
+      run: npm ci
+    
+    - name: Run tests
+      working-directory: ./${{ matrix.app }}/frontend
+      run: npm test -- --watchAll=false
+      env:
+        CI: true
+
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    
+    # Job-level permissions
+    permissions:
+      contents: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Lint Backend - Employee Portal
+      working-directory: ./employee-portal/backend
+      run: |
+        npm ci
+        npm run lint --if-present || echo "No lint script found"
+    
+    - name: Lint Backend - Payments Portal
+      working-directory: ./payments-portal/backend
+      run: |
+        npm ci
+        npm run lint --if-present || echo "No lint script found"
+

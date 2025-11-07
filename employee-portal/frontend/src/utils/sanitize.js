@@ -177,7 +177,10 @@ export const sanitizeRejectionReason = (reason) => {
     sanitized = sanitized.replace(/<[^>]*>/g, '');
   } while (sanitized !== previous);
   sanitized = sanitized.trim();
+<<<<<<< HEAD
   
+=======
+>>>>>>> 68ec228b (new files)
   // Limit to 500 characters
   sanitized = sanitized.substring(0, 500);
   

@@ -10,10 +10,17 @@ on:
     - cron: '0 2 * * *'
   workflow_dispatch:
 
+# Explicit workflow-level permissions (principle of least privilege)
+permissions:
+  contents: read
+
 jobs:
   dependency-scan:
     name: Dependency Vulnerability Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write  # For uploading artifacts
     strategy:
       matrix:
         portal: [employee-portal, payments-portal]
@@ -51,6 +58,9 @@ jobs:
   snyk-scan:
     name: Snyk Security Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write  # For uploading SARIF results
     strategy:
       matrix:
         portal: [employee-portal, payments-portal]
@@ -132,6 +142,8 @@ jobs:
   secret-scan:
     name: Secret Scanning
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code
@@ -150,6 +162,9 @@ jobs:
   eslint-scan:
     name: ESLint Security Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write  # For uploading artifacts
     strategy:
       matrix:
         portal: [employee-portal, payments-portal]
@@ -186,6 +201,8 @@ jobs:
   sonarqube-scan:
     name: SonarQube Analysis
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     
     steps:
@@ -241,6 +258,9 @@ jobs:
   dependency-review:
     name: Dependency Review
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write  # For commenting on PRs
     if: github.event_name == 'pull_request'
     
     steps:
@@ -256,6 +276,8 @@ jobs:
   osv-scanner:
     name: OSV Vulnerability Scanner
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code
@@ -273,6 +295,9 @@ jobs:
   security-summary:
     name: Security Scan Summary
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read  # For downloading artifacts
     needs: [dependency-scan, codeql-analysis, secret-scan, eslint-scan]
     if: always()
     

@@ -1,208 +1,88 @@
-# Security Workflows
+# GitHub Actions Workflows
 
-This directory contains GitHub Actions workflows for automated security scanning and code quality checks.
+This directory contains CI/CD workflows with security-hardened configurations following the principle of least privilege.
 
-## 🔒 Security Scan Workflow
+## Workflows
 
-The `security-scan.yml` workflow provides comprehensive security scanning for the entire project, including both the Employee Portal and Payments Portal.
+### 1. CodeQL Security Analysis (`codeql-analysis.yml`)
+**Purpose:** Automated security scanning for vulnerabilities
 
-### Features
+**Permissions:**
+- `actions: read` - Read workflow run data
+- `contents: read` - Read repository code
+- `security-events: write` - Upload security findings to GitHub Security tab
 
-#### 1. **Dependency Vulnerability Scanning**
-- **npm audit**: Scans for known vulnerabilities in npm dependencies
-- Runs on all four components (employee/payments × backend/frontend)
-- Generates JSON reports for tracking
-- Threshold: Moderate severity and above
+**Triggers:**
+- Push to main/master/develop branches
+- Pull requests
+- Weekly schedule (Mondays at midnight)
 
-#### 2. **Snyk Security Scanning**
-- Advanced vulnerability detection using Snyk
-- Checks for security issues in dependencies
-- Uploads results to GitHub Security tab (SARIF format)
-- Threshold: High severity and above
+### 2. CI - Build and Test (`ci.yml`)
+**Purpose:** Continuous integration testing for both portals
 
-#### 3. **CodeQL Analysis**
-- GitHub's semantic code analysis engine
-- Detects security vulnerabilities in JavaScript/Node.js code
-- Uses extended security queries
-- Results available in GitHub Security tab
+**Permissions:**
+- `contents: read` - Read repository code only (minimal access)
 
-#### 4. **Secret Scanning**
-- Uses TruffleHog OSS to detect hardcoded secrets
-- Scans entire git history
-- Detects API keys, passwords, tokens, and other credentials
-- Only reports verified secrets
+**Jobs:**
+- Backend tests (employee-portal & payments-portal)
+- Frontend tests (employee-portal & payments-portal)
+- Linting
 
-#### 5. **ESLint Security Scan**
-- Lints frontend code for security issues
-- Checks for common JavaScript security patterns
-- Generates reports for review
+### 3. Dependency Review (`dependency-review.yml`)
+**Purpose:** Review dependencies for security issues and license compliance
 
-#### 6. **SonarQube Analysis**
-- Comprehensive code quality and security analysis
-- Detects bugs, code smells, and security hotspots
-- Includes test coverage analysis
-- Integrates with your SonarQube instance
+**Permissions:**
+- `contents: read` - Read repository code
+- `pull-requests: write` - Comment on PRs with findings
 
-#### 7. **Dependency Review** (PR only)
-- Reviews dependency changes in pull requests
-- Blocks PRs with problematic dependencies
-- Checks for license compliance
-- Denied licenses: GPL-2.0, GPL-3.0
+**Triggers:**
+- Pull requests to main/master
 
-#### 8. **OSV Scanner**
-- Google's Open Source Vulnerability scanner
-- Scans for known vulnerabilities across all package managers
-- Fast and comprehensive
+**Security Features:**
+- Fails on HIGH severity vulnerabilities
+- Blocks GPL-2.0 and GPL-3.0 licenses
 
-### Triggers
+## Security Best Practices
 
-The workflow runs on:
-- **Push** to main/master/develop branches
-- **Pull Requests** to main/master/develop branches
-- **Schedule**: Daily at 2 AM UTC
-- **Manual**: Can be triggered manually via workflow_dispatch
+### Principle of Least Privilege
+All workflows follow the principle of least privilege by:
+1. Setting explicit `permissions` at the workflow level
+2. Setting explicit `permissions` at the job level (most restrictive)
+3. Only granting the minimum permissions required for each job
 
-### Setup Requirements
+### Default Permissions
+Without explicit permissions, GitHub Actions workflows receive broad permissions including:
+- `contents: write` (can modify code)
+- `issues: write` (can modify issues)
+- `pull-requests: write` (can modify PRs)
+- And many more...
 
-#### Required Secrets
+By explicitly defining permissions, we prevent:
+- Unauthorized code modifications
+- Token theft/exfiltration attacks
+- Privilege escalation
+- Supply chain attacks through compromised actions
 
-Add these secrets to your GitHub repository (Settings → Secrets and variables → Actions):
+## References
 
-1. **SNYK_TOKEN** (Optional but recommended)
-   - Sign up at [snyk.io](https://snyk.io)
-   - Get your API token from Account Settings
-   - Add as repository secret
+- [GitHub Actions Security Best Practices](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions)
+- [OWASP Top 10 CI/CD Security Risks](https://owasp.org/www-project-top-10-ci-cd-security-risks/)
+- [OpenSSF Scorecards](https://github.com/ossf/scorecard)
 
-2. **SONAR_TOKEN** (Optional)
-   - Your SonarQube authentication token
-   - Required if using SonarQube analysis
+## Token Permissions Reference
 
-3. **SONAR_HOST_URL** (Optional)
-   - Your SonarQube server URL
-   - Example: `https://sonarcloud.io` or your self-hosted instance
+| Permission | Read | Write | Description |
+|------------|------|-------|-------------|
+| `actions` | ✅ | ❌ | View workflow runs |
+| `contents` | ✅ | ❌ | Read repository code |
+| `security-events` | ❌ | ✅ | Upload security findings |
+| `pull-requests` | ❌ | ✅ | Comment on PRs (dependency review only) |
 
-### Viewing Results
+## Updating Workflows
 
-#### GitHub Security Tab
-1. Navigate to your repository
-2. Click "Security" tab
-3. Select "Code scanning alerts" or "Dependabot alerts"
-4. Review findings and take action
-
-#### Artifacts
-- Workflow artifacts contain detailed JSON reports
-- Available for 30 days after workflow run
-- Download from Actions → Workflow run → Artifacts
-
-#### Summary
-- Each workflow run generates a summary
-- Available at the bottom of the workflow run page
-- Shows status of all scan types
-
-### Best Practices
-
-1. **Fix High/Critical Issues Immediately**
-   - Address critical and high severity issues before merging
-   - Use the security tab to track progress
-
-2. **Review Dependency Updates**
-   - Keep dependencies up to date
-   - Use Dependabot for automated updates
-
-3. **Don't Commit Secrets**
-   - Use environment variables
-   - Store sensitive data in GitHub Secrets
-   - Use `.env` files (and add to `.gitignore`)
-
-4. **Regular Scanning**
-   - The scheduled daily scan helps catch new vulnerabilities
-   - Don't disable the scheduled runs
-
-5. **Monitor Trends**
-   - Track security metrics over time
-   - Set up notifications for new issues
-
-### Customization
-
-#### Adjusting Severity Thresholds
-
-Edit `security-scan.yml` to change severity thresholds:
-
-```yaml
-# For npm audit (line ~42)
-npm audit --audit-level=critical  # Options: low, moderate, high, critical
-
-# For Snyk (line ~75)
-args: --severity-threshold=medium  # Options: low, medium, high, critical
-```
-
-#### Adding Custom ESLint Rules
-
-Create `.eslintrc.json` in each frontend directory with security plugins:
-
-```json
-{
-  "extends": [
-    "plugin:security/recommended",
-    "plugin:react/recommended"
-  ],
-  "plugins": ["security"]
-}
-```
-
-Then install: `npm install --save-dev eslint-plugin-security`
-
-#### Disabling Specific Scans
-
-Comment out or remove the job you don't need from the workflow file.
-
-### Troubleshooting
-
-#### Workflow Fails on npm audit
-- This is expected if vulnerabilities are found
-- Review the audit report
-- Update dependencies: `npm audit fix`
-- For issues without fixes, assess risk and document exceptions
-
-#### Snyk Integration Issues
-- Ensure `SNYK_TOKEN` secret is set
-- Check token permissions
-- Verify token hasn't expired
-
-#### SonarQube Connection Issues
-- Verify `SONAR_HOST_URL` and `SONAR_TOKEN`
-- Check network access to SonarQube instance
-- Ensure project exists in SonarQube
-
-#### CodeQL Analysis Timeout
-- CodeQL may take time on large codebases
-- This is normal for the first run
-- Subsequent runs use caching and are faster
-
-### Integration with CI/CD
-
-This workflow complements your existing CircleCI setup:
-- GitHub Actions: Security scanning and automated checks
-- CircleCI: Build, test, and deployment
-- SonarQube: Code quality and security analysis
-
-### Additional Resources
-
-- [GitHub Code Scanning](https://docs.github.com/en/code-security/code-scanning)
-- [Snyk Documentation](https://docs.snyk.io)
-- [CodeQL Documentation](https://codeql.github.com/docs/)
-- [OWASP Top 10](https://owasp.org/www-project-top-ten/)
-- [npm audit Documentation](https://docs.npmjs.com/cli/v8/commands/npm-audit)
-
-### Support
-
-For issues or questions about this workflow:
-1. Check the workflow run logs
-2. Review this documentation
-3. Consult your DevSecOps team
-4. Check GitHub Actions documentation
-
----
-
-**Remember**: Security is everyone's responsibility. Make security scanning part of your development workflow, not an afterthought.
-
+When modifying workflows:
+1. Always specify explicit permissions
+2. Use the minimum permissions required
+3. Prefer job-level over workflow-level permissions
+4. Test changes in a feature branch first
+5. Review security implications before merging

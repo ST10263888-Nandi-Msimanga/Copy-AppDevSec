@@ -63,6 +63,12 @@ app.use("/api/auth/login", rateLimit({
   message: "Too many login attempts, please try again later."
 }));
 
+app.use("/api/auth/register", rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3, // Allow only 3 registration attempts per hour
+  message: "Too many registration attempts, please try again later."
+}));
+
 // CSRF token route
 app.get("/api/auth/csrf-token", csrfProtection, (req, res) => {
   const token = req.csrfToken();
